@@ -1,11 +1,11 @@
 
-displayName: "混模管理器"
+displayName: "混模管理器(Contents Hybrid Manager)"
 name: "HybridManager"
 
 author: "Space"
 
 main: "hybridManager.HybridMain"
-description: "用于V8星球混模管理。"
+description: "用于V8星球内容混合管理。"
 version: 1.0
 minGameVersion: 159
 java: true

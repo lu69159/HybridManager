@@ -1,7 +1,6 @@
 package hybridManager;
 
 import arc.*;
-import arc.struct.Seq;
 import hybridManager.ui.*;
 import mindustry.game.EventType.*;
 import mindustry.gen.*;
@@ -10,8 +9,7 @@ import mindustry.mod.*;
 import static mindustry.Vars.*;
 
 public class HybridMain extends Mod{
-    public Seq<Mods.LoadedMod> loadedMods = new Seq<>();
-    public ManagerSaves manager = new ManagerSaves();
+    public static ManagerSave manager = new ManagerSave();
     public HybridDialog hybrid;
 
     public HybridMain(){
