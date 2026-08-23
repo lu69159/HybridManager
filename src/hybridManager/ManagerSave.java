@@ -53,14 +53,20 @@ public class ManagerSave {
             }
 
             load();
+            Log.info("Loaded Hybrid Data");
         });
+
+        Events.on(EventType.SectorLaunchEvent.class, (e) -> { overrideRule(); });
+        Events.on(EventType.SaveLoadEvent.class, (e) -> { overrideRule(); });
     }
 
     public void load(){
         Fi saveJson = saveFile.child(saveJsonName);
         if(saveJson.exists()){
             try{
-                Jval roots = Jval.read(new InputStreamReader(new FileInputStream(saveFile.path() + "/" + saveJsonName), StandardCharsets.UTF_8));
+                Jval json = Jval.read(new InputStreamReader(new FileInputStream(saveFile.path() + "/" + saveJsonName), StandardCharsets.UTF_8));
+                mode = json.getString("hybridMode", "planet").equals("planet") ? HybridMode.planet : HybridMode.mod;
+                Jval roots = json.get("roots");
 
                 for(Jval p : roots.asArray()){
                     Planet planet = Vars.content.planet(p.getString("planet"));
@@ -95,7 +101,6 @@ public class ManagerSave {
 
                     hybridData.add(new PlanetHybridData(planet, mods, unloadedMods, planets, unloadedPlanets, p.getBool("addS", true), p.getBool("addE", false)));
                 }
-                mode = roots.getString("hybridMode", "planet").equals("planet") ? HybridMode.planet : HybridMode.mod;
             }catch (Exception e){
                 Vars.content.planets().each(this::init);
             }
@@ -108,8 +113,9 @@ public class ManagerSave {
     }
 
     public void save(){
+        Jval json = Jval.newObject().put("hybridMode", mode.name());
         Jval roots = Jval.newArray();
-        roots.add(Jval.newObject().put("hybridMode", mode.name()));
+
         hybridData.each(data -> {
             Jval planetLoadedMods = Jval.newArray();
             data.loadedMods.each(m -> planetLoadedMods.add(Jval.newObject().put("name", m.name)));
@@ -123,8 +129,10 @@ public class ManagerSave {
         });
         unloadedMainPlanets.each(roots::add);
 
+        json.put("roots", roots);
+
         try(Writer w = new OutputStreamWriter(new FileOutputStream(saveFile.path() + "/" + saveJsonName), StandardCharsets.UTF_8)){
-            roots.writeTo(w);
+            json.writeTo(w);
         }catch(IOException e){
             Vars.ui.showException(e);
         }
@@ -198,6 +206,45 @@ public class ManagerSave {
                         if(u.shownPlanets.contains(planet)) u.shownPlanets.remove(planet);
                     }
 
+                }
+            }
+        }
+    }
+
+    private void overrideRule(){
+        if(Vars.state.isCampaign()){
+            if(Vars.state.rules.bannedBlocks.size > 0){
+                var blocks = Vars.state.rules.bannedBlocks;
+
+                if(Vars.state.rules.blockWhitelist){
+                    for(var b : Vars.content.blocks()){
+                        if(b.shownPlanets.contains(Vars.state.getPlanet())){
+                            blocks.add(b);
+                        }
+                    }
+                }else{
+                    for(var b : blocks){
+                        if(b.shownPlanets.contains(Vars.state.getPlanet())){
+                            blocks.remove(b);
+                        }
+                    }
+                }
+            }
+            if(Vars.state.rules.bannedUnits.size > 0){
+                var units = Vars.state.rules.bannedUnits;
+
+                if(Vars.state.rules.blockWhitelist){
+                    for(var u : Vars.content.units()){
+                        if(u.shownPlanets.contains(Vars.state.getPlanet())){
+                            units.add(u);
+                        }
+                    }
+                }else{
+                    for(var u : units){
+                        if(u.shownPlanets.contains(Vars.state.getPlanet())){
+                            units.remove(u);
+                        }
+                    }
                 }
             }
         }
