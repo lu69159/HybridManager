@@ -1,5 +1,6 @@
 package hybridManager;
 
+import arc.Core;
 import arc.Events;
 import arc.files.*;
 import arc.func.Boolf;
@@ -24,6 +25,7 @@ import java.nio.charset.*;
 public class ManagerSave {
     public Fi saveFile = Vars.modDirectory.child("hybridManager");
     public Seq<PlanetHybridData> hybridData = new Seq<>();
+    public HybridMode mode;
 
     private ObjectMap<Planet,Seq<UnlockableContent>> planetContentMaps = new ObjectMap<>();
     private static final String saveJsonName = "hybridData.json";
@@ -40,6 +42,9 @@ public class ManagerSave {
                 for(var seq : Vars.content.getContentMap()){
                     for(var thing : seq){
                         if(thing instanceof UnlockableContent u && (u.isOnPlanet(p) || u.databaseTabs.contains(p))){
+                            if(p == Planets.serpulo || p == Planets.erekir){
+                                if(!u.isVanilla()) continue;
+                            }
                             planetContents.add(u);
                         }
                     }
@@ -90,19 +95,21 @@ public class ManagerSave {
 
                     hybridData.add(new PlanetHybridData(planet, mods, unloadedMods, planets, unloadedPlanets, p.getBool("addS", true), p.getBool("addE", false)));
                 }
+                mode = roots.getString("hybridMode", "planet").equals("planet") ? HybridMode.planet : HybridMode.mod;
             }catch (Exception e){
                 Vars.content.planets().each(this::init);
             }
         }else{
             Vars.content.planets().each(this::init);
-            save();
         }
+        if(mode == null) mode = HybridMode.planet;
 
-        reloadUnlockableContents(HybridMode.mod);
+        reloadUnlockableContents(mode);
     }
 
     public void save(){
         Jval roots = Jval.newArray();
+        roots.add(Jval.newObject().put("hybridMode", mode.name()));
         hybridData.each(data -> {
             Jval planetLoadedMods = Jval.newArray();
             data.loadedMods.each(m -> planetLoadedMods.add(Jval.newObject().put("name", m.name)));
@@ -137,15 +144,25 @@ public class ManagerSave {
         }
     }
 
+    public void reset(){
+        Fi saveJson = saveFile.child(saveJsonName);
+        if(saveJson.exists()){
+            saveJson.delete();
+        }
+        hybridData.clear();
+
+        Vars.content.planets().each(this::init);
+        mode = HybridMode.planet;
+        reloadUnlockableContents(mode);
+    }
+
     public void reloadUnlockableContents(HybridMode mode){
         if(mode == HybridMode.mod){
             hybridData.each(data -> {
                 ChangeDatabase(data.planet, u -> {
-                    if(u.isVanilla()){
-                        return (planetContentMaps.get(Planets.erekir).contains(u) && data.loadErekir) || (planetContentMaps.get(Planets.serpulo).contains(u) && data.loadSerpulo);
-                    }else{
-                        return data.loadedMods.contains(u.minfo.mod);
-                    }
+                    boolean includeBase = (data.loadSerpulo && planetContentMaps.get(Planets.serpulo).contains(u)) || (data.loadErekir && planetContentMaps.get(Planets.erekir).contains(u));
+                    boolean includeMod = !u.isVanilla() && data.loadedMods.contains(u.minfo.mod);
+                    return includeBase || includeMod;
                 });
             });
         }else if(mode == HybridMode.planet){
@@ -211,15 +228,6 @@ public class ManagerSave {
 
             this.loadSerpulo = s;
             this.loadErekir = e;
-        }
-
-        public void reset(){
-            loadedMods.clear();
-            unloadedMods.clear();
-            loadedPlanets.clear();
-            unloadedPlanets.clear();
-            if(planet != Planets.serpulo) loadSerpulo = false;
-            if(planet != Planets.erekir) loadErekir = false;
         }
     }
 }

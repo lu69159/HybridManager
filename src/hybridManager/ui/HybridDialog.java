@@ -26,11 +26,14 @@ public class HybridDialog extends BaseDialog {
     Seq<Mods.LoadedMod> allMods = new Seq<>(), loadedMods = new Seq<>(), unloadedMods = new Seq<>();
     Seq<Planet> loadedPlanets = new Seq<>(), unloadedPlanets = new Seq<>();
     boolean loadSerpulo, loadErekir;
-    HybridMode hybridMode;
 
     public HybridDialog() {
         super("@hybridManagerTitle");
         addCloseButton();
+        buttons.button("@settings.reset", Icon.trash, () -> ui.showConfirm("@confirm", "@hybrid.reset.confirm", () -> {
+            manager.reset();
+            setup();
+        })).size(210f, 64f);
 
         shown(() -> {
             setup();
@@ -87,8 +90,6 @@ public class HybridDialog extends BaseDialog {
         loadSerpulo = hybridData.loadSerpulo;
         loadErekir = hybridData.loadErekir;
 
-        hybridMode = Core.settings.getString("hybridMode", "planet").equals("planet") ? HybridMode.planet : HybridMode.mod;
-
         cont.clear();
 
         cont.table(left -> {
@@ -100,10 +101,10 @@ public class HybridDialog extends BaseDialog {
                 var group = new ButtonGroup<>();
                 for(var hm : HybridMode.all){
                     t.button(hm.localized(), Styles.flatTogglet, () -> {
-                        Core.settings.put("hybridMode", hm.name());
+                        manager.mode = hm;
                         manager.reloadUnlockableContents(hm);
                         setup();
-                    }).height(50f).growX().group(group).checked(Core.settings.getString("hybridMode", "mod") == hm.name()).row();
+                    }).height(50f).growX().group(group).checked(manager.mode == hm).row();
                 }
             }).height(150f).top().growX().row();
 
@@ -124,7 +125,7 @@ public class HybridDialog extends BaseDialog {
 
         cont.table(right -> {
                 right.table(top -> {
-                    showHybridState(top, hybridMode, h);
+                    showHybridState(top, manager.mode, h);
                 }).height(h*2).growX().top().row();
 
                 right.add(Core.bundle.get("planetDatabase")).row();
@@ -217,12 +218,12 @@ public class HybridDialog extends BaseDialog {
     void showHybridState(Table top, HybridMode mode, float h){
         top.top();
         top.pane(t -> {
-            showHybridTable(hybridMode, true, t, Core.bundle.get("hybrid.loaded"), h/2);
+            showHybridTable(manager.mode, true, t, Core.bundle.get("hybrid.loaded"), h/2);
         }).height(h).growX().padBottom(8f);
         top.row();
 
         top.pane(t -> {
-            showHybridTable(hybridMode, false, t, Core.bundle.get("hybrid.unloaded"), h/2);
+            showHybridTable(manager.mode, false, t, Core.bundle.get("hybrid.unloaded"), h/2);
         }).height(h).growX().padBottom(8f);
 
     }
@@ -315,9 +316,8 @@ public class HybridDialog extends BaseDialog {
             }, Styles.grayt, () -> {
                 if(choosePlanet != null){
                     var planetData = manager.hybridData.find(data -> data.planet == choosePlanet);
-                    planetData.loadSerpulo = !loadSerpulo;
+                    loadSerpulo = planetData.loadSerpulo = !planetData.loadSerpulo;
                     manager.reloadUnlockableContents(HybridMode.mod);
-                    loadSerpulo = planetData.loadSerpulo;
                 }
                 setup();
             });
@@ -343,9 +343,8 @@ public class HybridDialog extends BaseDialog {
             }, Styles.grayt, () -> {
                 if(choosePlanet != null){
                     var planetData = manager.hybridData.find(data -> data.planet == choosePlanet);
-                    planetData.loadErekir = !loadErekir;
+                    loadErekir = planetData.loadErekir = !planetData.loadErekir;
                     manager.reloadUnlockableContents(HybridMode.mod);
-                    loadErekir = planetData.loadErekir;
                 }
                 setup();
             });
