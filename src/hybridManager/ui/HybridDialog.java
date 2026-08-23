@@ -320,7 +320,7 @@ public class HybridDialog extends BaseDialog {
                     manager.reloadUnlockableContents(HybridMode.mod);
                 }
                 setup();
-            });
+            }).disabled(choosePlanet == Planets.serpulo);
             tmp = false;
         }
         if(isLoaded == loadErekir){
@@ -347,7 +347,7 @@ public class HybridDialog extends BaseDialog {
                     manager.reloadUnlockableContents(HybridMode.mod);
                 }
                 setup();
-            });
+            }).disabled(choosePlanet == Planets.erekir);
             tmp = false;
         }
         return tmp;
