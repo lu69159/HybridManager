@@ -3,8 +3,8 @@ package hybridManager;
 import arc.Core;
 
 public enum HybridMode{
-    mod,
-    planet;
+    planet,
+    mod;
 
     public static final HybridMode[] all = values();
 

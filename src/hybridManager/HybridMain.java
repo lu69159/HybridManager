@@ -15,8 +15,7 @@ public class HybridMain extends Mod{
     public HybridMain(){
         Events.on(ClientLoadEvent.class, e -> {
             hybrid = new HybridDialog();
-            ui.menufrag.addButton("@hybridManagerTile", Icon.planet, () -> hybrid.show());
+            ui.menufrag.addButton("@hybridManagerTitle", Icon.planet, () -> hybrid.show());
         });
     }
-
 }

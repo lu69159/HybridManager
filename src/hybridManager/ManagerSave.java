@@ -25,6 +25,7 @@ public class ManagerSave {
     public Fi saveFile = Vars.modDirectory.child("hybridManager");
     public Seq<PlanetHybridData> hybridData = new Seq<>();
 
+    private ObjectMap<Planet,Seq<UnlockableContent>> planetContentMaps = new ObjectMap<>();
     private static final String saveJsonName = "hybridData.json";
     Seq<Jval> unloadedMainPlanets = new Seq<>();
 
@@ -33,6 +34,19 @@ public class ManagerSave {
             if(!saveFile.exists()){
                 saveFile.mkdirs();
             }
+
+            for(var p : Vars.content.planets()){
+                Seq<UnlockableContent> planetContents = new Seq<>();
+                for(var seq : Vars.content.getContentMap()){
+                    for(var thing : seq){
+                        if(thing instanceof UnlockableContent u && (u.isOnPlanet(p) || u.databaseTabs.contains(p))){
+                            planetContents.add(u);
+                        }
+                    }
+                }
+                planetContentMaps.put(p, planetContents);
+            }
+
             load();
         });
     }
@@ -61,7 +75,6 @@ public class ManagerSave {
                             unloadedMods.add(Jval.newObject().put("name", mName));
                         }
                     }
-                    if(!planet.isVanilla() && !mods.contains(planet.minfo.mod)) mods.add(planet.minfo.mod);
 
                     Seq<Planet> planets = new Seq<>();
                     Seq<Jval> unloadedPlanets = new Seq<>();
@@ -85,7 +98,7 @@ public class ManagerSave {
             save();
         }
 
-        reloadUnlockableContents();
+        reloadUnlockableContents(HybridMode.mod);
     }
 
     public void save(){
@@ -99,7 +112,7 @@ public class ManagerSave {
             data.loadedPlanets.each(p -> planetLoadedPlanets.add(Jval.newObject().put("name", p.name)));
             data.unloadedPlanets.each(planetLoadedPlanets::add);
 
-            roots.add(Jval.newObject().put("planet", data.planet.name).put("loadedMods", planetLoadedMods).put("loadedPlanets", planetLoadedPlanets).put("addS", data.addSerpulo).put("addE", data.addErekir));
+            roots.add(Jval.newObject().put("planet", data.planet.name).put("loadedMods", planetLoadedMods).put("loadedPlanets", planetLoadedPlanets).put("addS", data.loadSerpulo).put("addE", data.loadErekir));
         });
         unloadedMainPlanets.each(roots::add);
 
@@ -110,22 +123,43 @@ public class ManagerSave {
         }
     }
 
-    void init(Planet planet){
+    public void init(Planet planet){
         if(planet.accessible){
             if(planet == Planets.serpulo){
-                hybridData.add(new PlanetHybridData(planet, new Seq<>(), new Seq<>(), Seq.with(Planets.serpulo), new Seq<>(), true, false));
+                hybridData.add(new PlanetHybridData(planet, new Seq<>(), Seq.with(Planets.serpulo), true, false));
             }else if(planet == Planets.erekir){
-                hybridData.add(new PlanetHybridData(planet, new Seq<>(), new Seq<>(), Seq.with(Planets.erekir), new Seq<>(), false, true));
+                hybridData.add(new PlanetHybridData(planet, new Seq<>(), Seq.with(Planets.erekir), false, true));
+            }else if(!planet.isVanilla()){
+                hybridData.add(new PlanetHybridData(planet, Seq.with(planet.minfo.mod), Seq.with(planet), false, false));
             }else{
-                hybridData.add(new PlanetHybridData(planet, new Seq<>(), new Seq<>(), new Seq<>(), new Seq<>(), false, false));
+                hybridData.add(new PlanetHybridData(planet, new Seq<>(), Seq.with(planet), false, false));
             }
         }
     }
 
-    public void reloadUnlockableContents(){
-        hybridData.each(data -> {
-            ChangeDatabase(data.planet, u -> !u.isVanilla() && data.loadedMods.contains(u.minfo.mod));
-        });
+    public void reloadUnlockableContents(HybridMode mode){
+        if(mode == HybridMode.mod){
+            hybridData.each(data -> {
+                ChangeDatabase(data.planet, u -> {
+                    if(u.isVanilla()){
+                        return (planetContentMaps.get(Planets.erekir).contains(u) && data.loadErekir) || (planetContentMaps.get(Planets.serpulo).contains(u) && data.loadSerpulo);
+                    }else{
+                        return data.loadedMods.contains(u.minfo.mod);
+                    }
+                });
+            });
+        }else if(mode == HybridMode.planet){
+            hybridData.each(data -> {
+                ChangeDatabase(data.planet, u -> {
+                    for(var p : data.loadedPlanets){
+                        if(planetContentMaps.get(p) != null && planetContentMaps.get(p).contains(u)){
+                            return true;
+                        }
+                    }
+                    return false;
+                });
+            });
+        }
         try{
             Field f = DatabaseDialog.class.getDeclaredField("allTabs");
             f.setAccessible(true);
@@ -156,8 +190,8 @@ public class ManagerSave {
         //MOD混合
         public Planet planet;
         public Seq<Mods.LoadedMod> loadedMods;
-        public boolean addSerpulo;
-        public boolean addErekir;
+        public boolean loadSerpulo;
+        public boolean loadErekir;
 
         public Seq<Jval> unloadedMods; //在混合列表中但是未启用的模组内容
 
@@ -165,6 +199,9 @@ public class ManagerSave {
         public Seq<Planet> loadedPlanets;
         public Seq<Jval> unloadedPlanets; //在混合列表中但是未启用的星球内容
 
+        public PlanetHybridData(Planet planet, Seq<Mods.LoadedMod> loadedMods, Seq<Planet> loadedPlanets, boolean s, boolean e){
+            this(planet, loadedMods, new Seq<>(), loadedPlanets, new Seq<>(), s, e);
+        }
         public PlanetHybridData(Planet planet, Seq<Mods.LoadedMod> loadedMods, Seq<Jval> unloadedMods, Seq<Planet> loadedPlanets, Seq<Jval> unloadedPlanets, boolean s, boolean e){
             this.planet = planet;
             this.loadedMods = loadedMods;
@@ -172,8 +209,8 @@ public class ManagerSave {
             this.loadedPlanets = loadedPlanets;
             this.unloadedPlanets = unloadedPlanets;
 
-            this.addSerpulo = s;
-            this.addErekir = e;
+            this.loadSerpulo = s;
+            this.loadErekir = e;
         }
 
         public void reset(){
@@ -181,8 +218,8 @@ public class ManagerSave {
             unloadedMods.clear();
             loadedPlanets.clear();
             unloadedPlanets.clear();
-            if(planet != Planets.serpulo) addSerpulo = false;
-            if(planet != Planets.erekir) addErekir = false;
+            if(planet != Planets.serpulo) loadSerpulo = false;
+            if(planet != Planets.erekir) loadErekir = false;
         }
     }
 }

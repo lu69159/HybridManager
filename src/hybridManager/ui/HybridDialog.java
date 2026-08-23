@@ -24,10 +24,12 @@ import static hybridManager.HybridMain.*;
 public class HybridDialog extends BaseDialog {
     Planet choosePlanet;
     Seq<Mods.LoadedMod> allMods = new Seq<>(), loadedMods = new Seq<>(), unloadedMods = new Seq<>();
-
+    Seq<Planet> loadedPlanets = new Seq<>(), unloadedPlanets = new Seq<>();
+    boolean loadSerpulo, loadErekir;
+    HybridMode hybridMode;
 
     public HybridDialog() {
-        super("@hybridManagerTile");
+        super("@hybridManagerTitle");
         addCloseButton();
 
         shown(() -> {
@@ -56,17 +58,36 @@ public class HybridDialog extends BaseDialog {
 
         loadedMods.clear();
         unloadedMods.clear();
-        allMods.each(mod -> {
-            manager.hybridData.each(hybridData -> {
-                if(hybridData.planet == choosePlanet){
-                    if(hybridData.loadedMods.contains(mod)){
-                        loadedMods.add(mod);
-                    }else{
-                        unloadedMods.add(mod);
-                    }
+        loadedPlanets.clear();
+        unloadedPlanets.clear();
+
+        var hybridData = manager.hybridData.find(d -> d.planet == choosePlanet);
+        if(hybridData == null){
+            manager.init(choosePlanet);
+            hybridData = manager.hybridData.find(d -> d.planet == choosePlanet);
+        }
+
+        hybridManager.ManagerSave.PlanetHybridData finalHybridData = hybridData;
+        for(var mod : allMods){
+            if(finalHybridData.loadedMods.contains(mod)){
+                loadedMods.add(mod);
+            }else{
+                unloadedMods.add(mod);
+            }
+        };
+        for(var planet : content.planets()){
+            if(planet.accessible){
+                if(finalHybridData.loadedPlanets.contains(planet)){
+                    loadedPlanets.add(planet);
+                }else{
+                    unloadedPlanets.add(planet);
                 }
-            });
-        });
+            }
+        }
+        loadSerpulo = hybridData.loadSerpulo;
+        loadErekir = hybridData.loadErekir;
+
+        hybridMode = Core.settings.getString("hybridMode", "planet").equals("planet") ? HybridMode.planet : HybridMode.mod;
 
         cont.clear();
 
@@ -80,13 +101,14 @@ public class HybridDialog extends BaseDialog {
                 for(var hm : HybridMode.all){
                     t.button(hm.localized(), Styles.flatTogglet, () -> {
                         Core.settings.put("hybridMode", hm.name());
+                        manager.reloadUnlockableContents(hm);
                         setup();
                     }).height(50f).growX().group(group).checked(Core.settings.getString("hybridMode", "mod") == hm.name()).row();
                 }
             }).height(150f).top().growX().row();
 
             left.pane(side -> {
-                side.add(Core.bundle.get("mod.hybrid.planets")).row();
+                side.add(Core.bundle.get("hybrid.planets")).row();
                 side.image().color(Pal.accent).height(3.0F).left().fillX().padBottom(5.0F).row();
 
                 content.planets().sort().each(planet -> {
@@ -101,9 +123,8 @@ public class HybridDialog extends BaseDialog {
         }).width(w).growY();
 
         cont.table(right -> {
-            if(Core.settings.getString("hybridMode", "mod").equals("mod")){
                 right.table(top -> {
-                    showModHybridState(top, h);
+                    showHybridState(top, hybridMode, h);
                 }).height(h*2).growX().top().row();
 
                 right.add(Core.bundle.get("planetDatabase")).row();
@@ -112,10 +133,6 @@ public class HybridDialog extends BaseDialog {
                 right.pane(data -> {
                     showPlanetDataBase(choosePlanet, data);
                 }).marginTop(10f).grow();
-            }
-            else if(Core.settings.getString("hybridMode", "planet").equals("planet")){
-                //TODO 星球分类显示
-            }
         }).grow();
     }
 
@@ -197,41 +214,42 @@ public class HybridDialog extends BaseDialog {
         }).grow().scrollX(false);
     }
 
-    void showModHybridState(Table top, float h){
+    void showHybridState(Table top, HybridMode mode, float h){
         top.top();
-
         top.pane(t -> {
-            showMods(loadedMods, t, Core.bundle.get("mod.hybrid.loaded"), h/2);
+            showHybridTable(hybridMode, true, t, Core.bundle.get("hybrid.loaded"), h/2);
         }).height(h).growX().padBottom(8f);
         top.row();
 
         top.pane(t -> {
-            showMods(unloadedMods, t, Core.bundle.get("mod.hybrid.unloaded"), h/2);
+            showHybridTable(hybridMode, false, t, Core.bundle.get("hybrid.unloaded"), h/2);
         }).height(h).growX().padBottom(8f);
+
     }
 
-    void changeModHybridState(Mods.LoadedMod mod){
-        if(choosePlanet != null){
-            var planetData = manager.hybridData.find(data -> data.planet == choosePlanet);
-            var tmps = planetData.loadedMods;
-            if(tmps == null){
-                tmps = new Seq<>();
-            }else if(tmps.contains(mod)){
-                tmps.remove(mod);
-            }else{
-                tmps.add(mod);
-            }
-            planetData.loadedMods = tmps;
-            manager.reloadUnlockableContents();
-        }
-    }
-
-    void showMods(Seq<Mods.LoadedMod> seqs, Table table, String tableTitle, float h){
+    void showHybridTable(HybridMode mode, boolean isLoaded, Table table, String tableTitle, float h){
         table.left();
         table.background(Styles.grayPanelDark);
         table.add(tableTitle).padLeft(4f).padRight(4f);
+
+        if(mode == HybridMode.mod){
+            var seqs = isLoaded ? loadedMods : unloadedMods;
+
+            if(showVanilla(table, h, isLoaded) & showMods(seqs, table, tableTitle, h)){
+                table.add("@empty");
+            }
+        }else if(mode == HybridMode.planet){
+            var seqs = isLoaded ? loadedPlanets : unloadedPlanets;
+
+            if(showPlanets(seqs, table, h)){
+                table.add("@empty");
+            }
+        }
+    }
+
+    boolean showMods(Seq<Mods.LoadedMod> seqs, Table table, String tableTitle, float h){
         if(seqs.size > 0){
-            seqs.each(lm -> {
+            for(var lm : seqs){
                 table.button(t -> {
                     t.defaults().left().top();
                     t.margin(12f);
@@ -253,16 +271,128 @@ public class HybridDialog extends BaseDialog {
                         title1.add().growX();
                     });
                 }, Styles.grayt, () -> {
-                    changeModHybridState(lm);
+                    if(choosePlanet != null){
+                        var planetData = manager.hybridData.find(data -> data.planet == choosePlanet);
+                        var tmps = planetData.loadedMods;
+                        if(tmps == null){
+                            tmps = new Seq<>();
+                        }else if(tmps.contains(lm)){
+                            tmps.remove(lm);
+                        }else{
+                            tmps.add(lm);
+                        }
+                        planetData.loadedMods = tmps;
+                        manager.reloadUnlockableContents(HybridMode.mod);
+                    }
                     setup();
                 });
-            });
+            };
+            return false;
         }else{
-            table.add("@empty");//TODO
+            return true;
         }
     }
 
-    void showVanilla(Table table, float h){
+    boolean showVanilla(Table table, float h, boolean isLoaded){
+        boolean tmp = true;
+        if(isLoaded == loadSerpulo){
+            table.button(t -> {
+                t.defaults().left().top();
+                t.margin(12f);
+                t.table(title1 -> {
+                    title1.left();
+                    title1.add(new BorderImage(){{
+                        setDrawable(Icon.planet.getRegion());
+                        setColor(Planets.serpulo.iconColor);
+                        border(Pal.accent);
+                    }}).size(h - 8f).padTop(-8f).padLeft(-8f).padRight(8f);
+                    title1.table(text -> {
+                        text.add(Planets.serpulo.localizedName + "\n[white]" + Core.bundle.get("hybrid.vanilla")).wrap().top().width(300f).growX().left();
+                    }).top().growX();
 
+                    title1.add().growX();
+                });
+            }, Styles.grayt, () -> {
+                if(choosePlanet != null){
+                    var planetData = manager.hybridData.find(data -> data.planet == choosePlanet);
+                    planetData.loadSerpulo = !loadSerpulo;
+                    manager.reloadUnlockableContents(HybridMode.mod);
+                    loadSerpulo = planetData.loadSerpulo;
+                }
+                setup();
+            });
+            tmp = false;
+        }
+        if(isLoaded == loadErekir){
+            table.button(t -> {
+                t.defaults().left().top();
+                t.margin(12f);
+                t.table(title1 -> {
+                    title1.left();
+                    title1.add(new BorderImage(){{
+                        setDrawable(Icon.planet.getRegion());
+                        setColor(Planets.erekir.iconColor);
+                        border(Pal.accent);
+                    }}).size(h - 8f).padTop(-8f).padLeft(-8f).padRight(8f);
+                    title1.table(text -> {
+                        text.add(Planets.erekir.localizedName + "\n[white]" + Core.bundle.get("hybrid.vanilla")).wrap().top().width(300f).growX().left();
+                    }).top().growX();
+
+                    title1.add().growX();
+                });
+            }, Styles.grayt, () -> {
+                if(choosePlanet != null){
+                    var planetData = manager.hybridData.find(data -> data.planet == choosePlanet);
+                    planetData.loadErekir = !loadErekir;
+                    manager.reloadUnlockableContents(HybridMode.mod);
+                    loadErekir = planetData.loadErekir;
+                }
+                setup();
+            });
+            tmp = false;
+        }
+        return tmp;
+    }
+
+    boolean showPlanets(Seq<Planet> seqs, Table table, float h){
+        if(seqs.size > 0){
+            for(var p : seqs){
+                table.button(t -> {
+                    t.defaults().left().top();
+                    t.margin(12f);
+                    t.table(title1 -> {
+                        title1.left();
+                        title1.add(new BorderImage(){{
+                            if(Core.atlas.isFound(p.fullIcon)){
+                                setDrawable(p.fullIcon);
+                            }else{
+                                setDrawable(Icon.planet.getRegion());
+                                setColor(p.iconColor);
+                            }
+                            border(Pal.accent);
+                        }}).size(h - 8f).padTop(-8f).padLeft(-8f).padRight(8f);
+                        title1.table(text -> {
+                            text.add(p.localizedName + "\n" + (p.isVanilla() ? "" : "[lightgray]" + p.minfo.mod.meta.displayName)).wrap().top().width(300f).growX().left();
+                        }).top().growX();
+
+                        title1.add().growX();
+                    });
+                }, Styles.grayt, () -> {
+                    if(choosePlanet != null){
+                        var planetdata = manager.hybridData.find(data -> data.planet == choosePlanet);
+                        if(planetdata.loadedPlanets.contains(p)){
+                            planetdata.loadedPlanets.remove(p);
+                        }else{
+                            planetdata.loadedPlanets.add(p);
+                        }
+                        manager.reloadUnlockableContents(HybridMode.planet);
+                    }
+                    setup();
+                });
+            }
+            return false;
+        }else{
+            return true;
+        }
     }
 }

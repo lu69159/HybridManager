@@ -1,12 +1,11 @@
 
 displayName: "混模管理器(Contents Hybrid Manager)"
 name: "HybridManager"
-
 author: "Space"
-
+repo: "lu69159/HybridManager"
 main: "hybridManager.HybridMain"
-description: "用于V8星球内容混合管理。"
-version: 1.0
+description: "用于V8星球内容混合管理\nFor V8 version Planet content hybrid management\n[red]unstable version 测试版本"
+version: 0.1
 minGameVersion: 159
 java: true
 hidden: true
