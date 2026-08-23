@@ -47,8 +47,8 @@ public class HybridDialog extends BaseDialog {
     }
 
     void setup(){
-        float w = Math.max(Core.graphics.getWidth() / 8f, 200f);
-        float h = Math.max(Core.graphics.getHeight() / 8f, 100f);
+        float w = Math.max(Core.graphics.getWidth() / 8f, 50f);
+        float h = Math.max(Core.graphics.getHeight() / 8f, 40f);
 
         allMods.clear();
         mods.getMods().each(mod -> {
@@ -193,7 +193,7 @@ public class HybridDialog extends BaseDialog {
                             list.left();
                             int count = 0;
                             for(UnlockableContent u : arr){
-                                Image image = list.add(new Image(u.uiIcon)).size(Mathf.clamp((Core.graphics.getWidth() - Math.max(Core.graphics.getWidth() / 8f, 200f)) / 40f, 32f, 80f)).pad(3).get();
+                                Image image = list.add(new Image(u.uiIcon)).size(Mathf.clamp((Core.graphics.getWidth() - Math.max(Core.graphics.getWidth() / 8f, 200f)) / 40f, 32f, Core.app.isMobile() ? 40f : 80f)).pad(3).get();
 
                                 image.clicked(() -> ui.content.show(u));          // Vars.ui
                                 image.addListener(new Tooltip(tip -> tip.background(Tex.button).add(u.localizedName)));
