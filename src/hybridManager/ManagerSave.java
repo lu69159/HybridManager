@@ -41,7 +41,7 @@ public class ManagerSave {
                 Seq<UnlockableContent> planetContents = new Seq<>();
                 for(var seq : Vars.content.getContentMap()){
                     for(var thing : seq){
-                        if(thing instanceof UnlockableContent u && (u.isOnPlanet(p) || u.databaseTabs.contains(p))){
+                        if(thing instanceof UnlockableContent u && (u.shownPlanets.contains(p) || u.databaseTabs.contains(p))){
                             if(p == Planets.serpulo || p == Planets.erekir){
                                 if(!u.isVanilla()) continue;
                             }
@@ -205,7 +205,8 @@ public class ManagerSave {
                         if(u.databaseTabs.contains(planet)) u.databaseTabs.remove(planet);
                         if(u.shownPlanets.contains(planet)) u.shownPlanets.remove(planet);
                     }
-
+                    if(u.shownPlanets.isEmpty()) u.shownPlanets.add(Planets.sun);
+                    if(u.databaseTabs.isEmpty()) u.databaseTabs.add(Planets.sun);
                 }
             }
         }
