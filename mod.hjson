@@ -5,7 +5,7 @@ author: "Space"
 repo: "lu69159/HybridManager"
 main: "hybridManager.HybridMain"
 subtitle : "用于V8星球内容混合管理 | For V8 version Planet content hybrid management"
-description: "[#FF0000]如果与MoreCustomSettings一起使用，请关闭MoreCustomSettings设置中的[accent]启用自定义内容管理[]\n\n[#FF0000]If used together with MoreCustomSettings mod, please disable [accent]Enable Custom Content Manager[] in the MoreCustomSettings settings."
+description: "此模组内容正在移植到MoreCustomSettings，如果与MoreCustomSettings一起使用，请关闭MoreCustomSettings设置中的[accent]启用自定义内容管理[]\n\nThis mod's content is being ported to MoreCustomSettings. If used together with MoreCustomSettings mod, please disable [accent]Enable Custom Content Manager[] in the MoreCustomSettings settings."
 version: 1.0
 minGameVersion: 159
 java: true
