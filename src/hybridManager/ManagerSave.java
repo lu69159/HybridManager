@@ -12,7 +12,7 @@ import mindustry.content.Planets;
 import mindustry.ctype.UnlockableContent;
 import mindustry.game.EventType;
 import mindustry.mod.*;
-import mindustry.type.Planet;
+import mindustry.type.*;
 import mindustry.ui.dialogs.DatabaseDialog;
 
 import java.io.*;
@@ -207,6 +207,7 @@ public class ManagerSave {
                     }
                     if(u.shownPlanets.isEmpty()) u.shownPlanets.add(Planets.sun);
                     if(u.databaseTabs.isEmpty()) u.databaseTabs.add(Planets.sun);
+                    if(u instanceof UnitType unit) unit.envDisabled = 0;
                 }
             }
         }
