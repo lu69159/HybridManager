@@ -217,7 +217,6 @@ public class ManagerSave {
         if(Vars.state.isCampaign()){
             if(Vars.state.rules.bannedBlocks.size > 0){
                 var blocks = Vars.state.rules.bannedBlocks;
-
                 if(Vars.state.rules.blockWhitelist){
                     for(var b : Vars.content.blocks()){
                         if(b.shownPlanets.contains(Vars.state.getPlanet())){
@@ -234,7 +233,6 @@ public class ManagerSave {
             }
             if(Vars.state.rules.bannedUnits.size > 0){
                 var units = Vars.state.rules.bannedUnits;
-
                 if(Vars.state.rules.blockWhitelist){
                     for(var u : Vars.content.units()){
                         if(u.shownPlanets.contains(Vars.state.getPlanet())){
